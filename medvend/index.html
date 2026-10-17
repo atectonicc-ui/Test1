@@ -1,0 +1,2044 @@
+<!doctype html>
+<html
+  lang="en"
+  data-composition-variables='[{"id":"webglScale","type":"number","label":"WebGL render scale (1 = native 4K)","default":0.75,"min":0.25,"max":1,"step":0.05}]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=3840, height=2160" />
+    <title>MedVend Health Kiosk — HyperFrames Master</title>
+    <script src="vendor/gsap.min.js"></script>
+    <script src="vendor/CustomEase.min.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/three.module.js",
+          "three/addons/": "./vendor/three/addons/"
+        }
+      }
+    </script>
+    <style>
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/inter-latin-wght-normal.woff2") format("woff2");
+        font-weight: 100 900;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/inter-latin-wght-italic.woff2") format("woff2");
+        font-weight: 100 900;
+        font-style: italic;
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        src: url("assets/fonts/jetbrains-mono-latin-300-normal.woff2") format("woff2");
+        font-weight: 300;
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        src: url("assets/fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2");
+        font-weight: 400;
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        src: url("assets/fonts/jetbrains-mono-latin-500-normal.woff2") format("woff2");
+        font-weight: 500;
+      }
+
+      :root {
+        --void: #06080c;
+        --cyan: #00f3ff;
+        --emerald: #00ff87;
+        --violet: #8a2be2;
+        --ink: #e8f6ff;
+        --muted: #8ea3b8;
+        --glass: rgba(9, 14, 23, 0.86);
+        --glass-line: rgba(0, 243, 255, 0.28);
+        --mono: "JetBrains Mono", ui-monospace, monospace;
+        --sans: "Inter", system-ui, sans-serif;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 3840px;
+        height: 2160px;
+        overflow: hidden;
+        background: var(--void);
+        color: var(--ink);
+        font-family: var(--sans);
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--void);
+      }
+      #webgl-canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      #svg-hud-layer {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        pointer-events: none;
+      }
+      #dom-ui-wrapper {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+      }
+      .mono {
+        font-family: var(--mono);
+      }
+      .abs {
+        position: absolute;
+      }
+
+      /* ---------- persistent HUD frame ---------- */
+      #hud {
+        position: absolute;
+        inset: 0;
+        font-family: var(--mono);
+        font-size: 30px;
+        letter-spacing: 0.16em;
+        color: var(--muted);
+        z-index: 30;
+      }
+      .corner {
+        position: absolute;
+        width: 120px;
+        height: 120px;
+        border-color: rgba(0, 243, 255, 0.55);
+        border-style: solid;
+        border-width: 0;
+      }
+      .corner.tl {
+        left: 72px;
+        top: 72px;
+        border-left-width: 4px;
+        border-top-width: 4px;
+      }
+      .corner.tr {
+        right: 72px;
+        top: 72px;
+        border-right-width: 4px;
+        border-top-width: 4px;
+      }
+      .corner.bl {
+        left: 72px;
+        bottom: 72px;
+        border-left-width: 4px;
+        border-bottom-width: 4px;
+      }
+      .corner.br {
+        right: 72px;
+        bottom: 72px;
+        border-right-width: 4px;
+        border-bottom-width: 4px;
+      }
+      #hud-brand,
+      #hud-rec,
+      #hud-time,
+      #hud-scene span {
+        padding: 10px 18px;
+        border-radius: 8px;
+        background: rgba(6, 8, 12, 0.66);
+      }
+      #hud-brand {
+        left: 104px;
+        top: 98px;
+        color: var(--ink);
+      }
+      #hud-brand b {
+        color: var(--cyan);
+        font-weight: 500;
+      }
+      #hud-rec {
+        right: 104px;
+        top: 98px;
+        text-align: right;
+      }
+      #hud-rec i {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #ff3b5c;
+        margin-right: 14px;
+        vertical-align: 1px;
+        box-shadow: 0 0 18px #ff3b5c;
+      }
+      #hud-scene {
+        left: 104px;
+        bottom: 116px;
+        width: 1400px;
+        height: 40px;
+      }
+      #hud-scene span {
+        position: absolute;
+        left: 0;
+        top: 0;
+        white-space: nowrap;
+        opacity: 0;
+      }
+      #hud-scene span b {
+        color: var(--cyan);
+        font-weight: 500;
+      }
+      #hud-time {
+        right: 104px;
+        bottom: 96px;
+        text-align: right;
+        color: var(--ink);
+      }
+      #hud-time em {
+        font-style: normal;
+        color: var(--cyan);
+      }
+      #laser {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 6px;
+        background: var(--cyan);
+        box-shadow:
+          0 0 30px 8px rgba(0, 243, 255, 0.7),
+          0 0 120px 30px rgba(0, 243, 255, 0.25);
+        opacity: 0;
+        z-index: 40;
+      }
+
+      /* ---------- scene 01 ---------- */
+      #bootlog {
+        left: 200px;
+        top: 250px;
+        font-family: var(--mono);
+        font-size: 34px;
+        line-height: 1.75;
+        color: #9fd9e4;
+        white-space: pre;
+        letter-spacing: 0.04em;
+      }
+      #bootlog .ok {
+        color: var(--emerald);
+      }
+      .tlabel {
+        position: absolute;
+        left: 0;
+        top: 0;
+        font-family: var(--mono);
+        font-size: 36px;
+        letter-spacing: 0.08em;
+        color: var(--ink);
+        white-space: nowrap;
+        padding: 14px 24px 14px 52px;
+        background: rgba(6, 10, 16, 0.72);
+        border: 2px solid rgba(0, 243, 255, 0.35);
+        border-radius: 10px;
+        opacity: 0;
+      }
+      .tlabel::before {
+        content: "";
+        position: absolute;
+        left: 20px;
+        top: 50%;
+        width: 16px;
+        height: 16px;
+        margin-top: -8px;
+        border-radius: 50%;
+        background: var(--cyan);
+        box-shadow: 0 0 16px var(--cyan);
+      }
+      .tlabel.em::before {
+        background: var(--emerald);
+        box-shadow: 0 0 16px var(--emerald);
+      }
+      .tlabel b {
+        color: var(--cyan);
+        font-weight: 500;
+      }
+      .tlabel.em b {
+        color: var(--emerald);
+      }
+      #title-block {
+        left: 220px;
+        top: 640px;
+        width: 1640px;
+      }
+      #title-eyebrow {
+        font-family: var(--mono);
+        font-size: 40px;
+        letter-spacing: 0.3em;
+        color: var(--cyan);
+        margin-bottom: 56px;
+      }
+      #title-scramble {
+        font-weight: 200;
+        font-size: 136px;
+        line-height: 1.1;
+        letter-spacing: 0.01em;
+        color: #f4fbff;
+        min-height: 650px;
+      }
+      #title-scramble div {
+        white-space: nowrap;
+        height: 150px;
+      }
+      #title-scramble .sc {
+        color: var(--cyan);
+        font-family: var(--mono);
+        font-weight: 300;
+      }
+      #title-rule {
+        width: 640px;
+        height: 4px;
+        margin: 60px 0 44px;
+        background: linear-gradient(90deg, var(--cyan), var(--emerald), transparent);
+        transform-origin: 0 50%;
+      }
+      #title-sub {
+        font-size: 52px;
+        font-weight: 300;
+        line-height: 1.45;
+        color: #a9bccd;
+        max-width: 1500px;
+      }
+
+      /* ---------- scene 02: kiosk UI replica ---------- */
+      #kiosk-ui {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1250px;
+        height: 2000px;
+        transform-origin: 0 0;
+        border-radius: 44px;
+        overflow: hidden;
+        background: #0b1324;
+        color: #f1f5f9;
+        box-shadow:
+          0 0 0 3px rgba(0, 243, 255, 0.4),
+          0 0 140px rgba(0, 243, 255, 0.28);
+        opacity: 0;
+        z-index: 5;
+      }
+      .ku-blob {
+        position: absolute;
+        border-radius: 50%;
+      }
+      .ku-header {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1250px;
+        height: 150px;
+        display: flex;
+        align-items: center;
+        gap: 26px;
+        padding: 0 40px;
+        background: linear-gradient(135deg, #061b30 0%, #0a3d62 55%, #0b6fb0 130%);
+      }
+      .ku-logo {
+        width: 82px;
+        height: 82px;
+        border-radius: 22px;
+        background: linear-gradient(135deg, #0a3d62, #0ea5e9);
+        display: grid;
+        place-items: center;
+        box-shadow: 0 0 0 6px rgba(14, 165, 233, 0.25);
+        flex: none;
+      }
+      .ku-brand b {
+        display: block;
+        font-size: 40px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .ku-brand span {
+        font-size: 26px;
+        color: #b9d4ea;
+      }
+      .ku-clock {
+        margin-left: auto;
+        font-size: 34px;
+        font-weight: 700;
+      }
+      .ku-pill {
+        font-size: 26px;
+        font-weight: 600;
+        padding: 14px 24px;
+        border-radius: 999px;
+        background: rgba(0, 255, 135, 0.14);
+        color: #7dffc0;
+        border: 2px solid rgba(0, 255, 135, 0.4);
+      }
+      .ku-steps {
+        position: absolute;
+        left: 40px;
+        top: 178px;
+        width: 1170px;
+        height: 60px;
+      }
+      .ku-steps-track {
+        position: absolute;
+        left: 0;
+        top: 54px;
+        width: 1170px;
+        height: 8px;
+        border-radius: 8px;
+        background: #1d2a47;
+        overflow: hidden;
+      }
+      #ku-steps-fill {
+        width: 1170px;
+        height: 8px;
+        background: linear-gradient(90deg, #0284c7, #00f3ff, #00ff87);
+        transform-origin: 0 50%;
+      }
+      .ku-step {
+        position: absolute;
+        top: 0;
+        font-size: 28px;
+        font-weight: 600;
+        color: #94a3b8;
+        white-space: nowrap;
+      }
+      .ku-step i {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        line-height: 40px;
+        margin-right: 12px;
+        border-radius: 50%;
+        text-align: center;
+        font-style: normal;
+        font-size: 24px;
+        background: #1d2a47;
+        color: #cbd5e1;
+      }
+      .ku-body {
+        position: absolute;
+        left: 0;
+        top: 260px;
+        width: 1250px;
+        height: 1540px;
+      }
+      .ku-state {
+        position: absolute;
+        inset: 0;
+        padding: 30px 56px;
+        opacity: 0;
+      }
+      .ku-state h2 {
+        font-size: 62px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      .ku-state > p {
+        font-size: 32px;
+        color: #94a3b8;
+        margin-top: 10px;
+      }
+      .ku-card {
+        position: absolute;
+        left: 56px;
+        width: 1138px;
+        border-radius: 30px;
+        background: #16213a;
+        border: 2px solid #2a3a5c;
+      }
+      .ku-btn {
+        position: absolute;
+        left: 56px;
+        width: 1138px;
+        height: 120px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #0369a1 0%, #0284c7 50%, #0ea5e9 120%);
+        display: grid;
+        place-items: center;
+        font-size: 36px;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        box-shadow: 0 16px 50px -10px rgba(2, 132, 199, 0.7);
+      }
+
+      /* attract */
+      #st-attract {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1250px;
+        height: 2000px;
+        background: #0b1324;
+        opacity: 1;
+        z-index: 3;
+        text-align: center;
+      }
+      .att-tile {
+        position: absolute;
+        left: 520px;
+        top: 640px;
+        width: 210px;
+        height: 210px;
+        border-radius: 52px;
+        background: linear-gradient(135deg, #0a3d62, #0ea5e9);
+        display: grid;
+        place-items: center;
+        box-shadow:
+          0 0 0 18px rgba(14, 165, 233, 0.18),
+          0 30px 80px rgba(14, 165, 233, 0.4);
+      }
+      .att-title {
+        position: absolute;
+        left: 0;
+        top: 920px;
+        width: 1250px;
+        font-size: 84px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .att-title span {
+        color: #22bdeb;
+      }
+      .att-sub {
+        position: absolute;
+        left: 150px;
+        top: 1050px;
+        width: 950px;
+        font-size: 36px;
+        line-height: 1.45;
+        color: #94a3b8;
+      }
+      .att-cta {
+        position: absolute;
+        left: 125px;
+        top: 1240px;
+        width: 1000px;
+        height: 124px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #0369a1 0%, #0284c7 50%, #0ea5e9 120%);
+        display: grid;
+        place-items: center;
+        font-size: 36px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        box-shadow: 0 20px 70px -10px rgba(14, 165, 233, 0.8);
+      }
+
+      /* vitals */
+      #bio-sensor {
+        position: absolute;
+        left: 475px;
+        top: 170px;
+        width: 300px;
+        height: 300px;
+      }
+      .pulse {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 300px;
+        height: 300px;
+        border-radius: 50%;
+        border: 6px solid #00f3ff;
+        opacity: 0;
+      }
+      .bio-core {
+        position: absolute;
+        left: 30px;
+        top: 30px;
+        width: 240px;
+        height: 240px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 50% 40%, #1d3a5f, #0b1324 70%);
+        border: 4px solid #2a3a5c;
+        display: grid;
+        place-items: center;
+      }
+      #bio-core-glow {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(0, 243, 255, 0.55), rgba(0, 243, 255, 0) 70%);
+        opacity: 0;
+      }
+      #bio-status {
+        position: absolute;
+        left: 0;
+        top: 490px;
+        width: 1250px;
+        text-align: center;
+        font-family: var(--mono);
+        font-size: 30px;
+        letter-spacing: 0.2em;
+        color: #67e8f9;
+      }
+      .vgrid {
+        position: absolute;
+        left: 56px;
+        top: 570px;
+        width: 1138px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      .vcard {
+        height: 190px;
+        border-radius: 28px;
+        background: #16213a;
+        border: 2px solid #2a3a5c;
+        padding: 26px 32px;
+      }
+      .vcard label {
+        display: block;
+        font-size: 27px;
+        font-weight: 600;
+        color: #94a3b8;
+        letter-spacing: 0.04em;
+      }
+      .vcard .vv {
+        font-size: 86px;
+        font-weight: 750;
+        letter-spacing: -0.02em;
+        margin-top: 6px;
+      }
+      .vcard .vv small {
+        font-size: 32px;
+        font-weight: 600;
+        color: #94a3b8;
+        margin-left: 10px;
+      }
+      #ecg-card {
+        top: 1000px;
+        height: 230px;
+        overflow: hidden;
+      }
+      #ecg-canvas {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1134px;
+        height: 226px;
+      }
+      #vitals-done {
+        top: 1290px;
+      }
+
+      /* triage */
+      .chips {
+        position: absolute;
+        left: 56px;
+        top: 230px;
+        width: 1138px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+      }
+      .chip {
+        height: 90px;
+        border-radius: 999px;
+        background: #16213a;
+        border: 2px solid #2a3a5c;
+        display: grid;
+        place-items: center;
+        font-size: 31px;
+        font-weight: 600;
+        color: #cbd5e1;
+        position: relative;
+      }
+      .chip .on {
+        position: absolute;
+        inset: -2px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #0369a1, #0ea5e9);
+        display: grid;
+        place-items: center;
+        color: #fff;
+        opacity: 0;
+      }
+      #tri-engine {
+        top: 470px;
+        height: 290px;
+        padding: 34px 40px;
+      }
+      #tri-engine h3,
+      #tri-result h3 {
+        font-size: 34px;
+        font-weight: 700;
+      }
+      .tri-bar {
+        margin-top: 26px;
+        width: 1054px;
+        height: 18px;
+        border-radius: 18px;
+        background: #0b1324;
+        overflow: hidden;
+      }
+      #tri-bar-fill {
+        width: 1054px;
+        height: 18px;
+        background: linear-gradient(90deg, #8a2be2, #00f3ff);
+        transform-origin: 0 50%;
+      }
+      #tri-scan {
+        margin-top: 24px;
+        font-family: var(--mono);
+        font-size: 28px;
+        color: #a5b4fc;
+      }
+      #tri-ctx {
+        margin-top: 14px;
+        font-family: var(--mono);
+        font-size: 28px;
+        color: #94a3b8;
+      }
+      #tri-result {
+        top: 790px;
+        height: 470px;
+        padding: 34px 40px;
+        border-color: rgba(0, 255, 135, 0.45);
+        opacity: 0;
+      }
+      .badge {
+        display: inline-block;
+        font-family: var(--mono);
+        font-size: 26px;
+        font-weight: 500;
+        letter-spacing: 0.1em;
+        padding: 12px 22px;
+        border-radius: 999px;
+        background: rgba(0, 255, 135, 0.14);
+        color: #6effb8;
+        border: 2px solid rgba(0, 255, 135, 0.45);
+      }
+      .tri-dx {
+        font-size: 44px;
+        font-weight: 700;
+        line-height: 1.25;
+        margin-top: 26px;
+        width: 760px;
+      }
+      .tri-flags {
+        margin-top: 26px;
+        font-size: 30px;
+        line-height: 1.7;
+        color: #cbd5e1;
+      }
+      .tri-flags b {
+        color: #00ff87;
+      }
+      #conf-ring {
+        position: absolute;
+        right: 40px;
+        top: 40px;
+        width: 260px;
+        height: 260px;
+      }
+      #conf-val {
+        position: absolute;
+        right: 40px;
+        top: 120px;
+        width: 260px;
+        text-align: center;
+        font-size: 56px;
+        font-weight: 800;
+      }
+      .conf-lbl {
+        position: absolute;
+        right: 40px;
+        top: 196px;
+        width: 260px;
+        text-align: center;
+        font-size: 22px;
+        letter-spacing: 0.14em;
+        color: #94a3b8;
+      }
+      .tri-rx {
+        position: absolute;
+        right: 40px;
+        bottom: 40px;
+        font-size: 30px;
+        font-weight: 700;
+        padding: 16px 26px;
+        border-radius: 18px;
+        background: rgba(14, 165, 233, 0.16);
+        border: 2px solid rgba(14, 165, 233, 0.5);
+        color: #7dd3fc;
+      }
+      #tri-go {
+        top: 1290px;
+        opacity: 0;
+      }
+
+      /* dispense */
+      #dsp-product {
+        top: 200px;
+        height: 380px;
+        padding: 40px;
+      }
+      .dsp-art {
+        position: absolute;
+        left: 40px;
+        top: 40px;
+        width: 300px;
+        height: 300px;
+        border-radius: 24px;
+        background: linear-gradient(160deg, #1e3a6a, #13213d);
+        display: grid;
+        place-items: center;
+      }
+      .dsp-info {
+        position: absolute;
+        left: 380px;
+        top: 44px;
+        width: 700px;
+      }
+      .dsp-info b {
+        display: block;
+        font-size: 50px;
+        font-weight: 750;
+      }
+      .dsp-info .q {
+        font-size: 30px;
+        color: #94a3b8;
+        margin-top: 10px;
+      }
+      .tag {
+        display: inline-block;
+        margin-top: 18px;
+        font-size: 24px;
+        font-weight: 600;
+        padding: 8px 18px;
+        border-radius: 999px;
+        background: rgba(99, 102, 241, 0.2);
+        color: #a5b4fc;
+      }
+      .dsp-price {
+        margin-top: 30px;
+        font-size: 64px;
+        font-weight: 800;
+      }
+      .instock {
+        position: absolute;
+        right: 40px;
+        bottom: 48px;
+        font-size: 26px;
+        font-weight: 700;
+        padding: 10px 20px;
+        border-radius: 999px;
+        background: rgba(16, 185, 129, 0.16);
+        color: #34d399;
+      }
+      #dsp-pay {
+        top: 610px;
+        height: 280px;
+        padding: 40px;
+      }
+      .nfc-ico {
+        position: absolute;
+        left: 50px;
+        top: 50px;
+        width: 180px;
+        height: 180px;
+      }
+      #pay-wait,
+      #pay-ok {
+        position: absolute;
+        left: 280px;
+        top: 70px;
+        width: 800px;
+      }
+      #pay-wait b,
+      #pay-ok b {
+        display: block;
+        font-size: 46px;
+        font-weight: 750;
+      }
+      #pay-wait span,
+      #pay-ok span {
+        font-size: 30px;
+        color: #94a3b8;
+      }
+      #pay-ok {
+        opacity: 0;
+      }
+      #pay-ok b {
+        color: #00ff87;
+      }
+      #dsp-steps {
+        top: 920px;
+        height: 430px;
+        padding: 36px 40px;
+      }
+      .dstep {
+        display: flex;
+        align-items: center;
+        height: 72px;
+        font-size: 32px;
+        font-weight: 600;
+        color: #cbd5e1;
+        position: relative;
+      }
+      .dstep i {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: 3px solid #334155;
+        margin-right: 26px;
+        position: relative;
+        flex: none;
+      }
+      .dstep i::after {
+        content: "";
+        position: absolute;
+        inset: 6px;
+        border-radius: 50%;
+        background: #00ff87;
+        opacity: var(--done, 0);
+        box-shadow: 0 0 14px #00ff87;
+      }
+      .dstep em {
+        margin-left: auto;
+        font-style: normal;
+        font-family: var(--mono);
+        font-size: 26px;
+        color: #64748b;
+      }
+      .dsp-bar {
+        margin-top: 24px;
+        width: 1054px;
+        height: 16px;
+        border-radius: 16px;
+        background: #0b1324;
+        overflow: hidden;
+      }
+      #dsp-bar-fill {
+        width: 1054px;
+        height: 16px;
+        background: linear-gradient(90deg, #00f3ff, #00ff87);
+        transform-origin: 0 50%;
+      }
+      #dsp-collect {
+        position: absolute;
+        left: 56px;
+        top: 1390px;
+        width: 1138px;
+        text-align: center;
+        font-size: 38px;
+        font-weight: 700;
+        color: #67e8f9;
+        opacity: 0;
+      }
+      .ku-footer {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 1250px;
+        height: 200px;
+        background: #16213a;
+        border-top: 2px solid #2a3a5c;
+        display: flex;
+        align-items: center;
+        padding: 0 48px;
+        gap: 30px;
+      }
+      .ku-cart {
+        width: 84px;
+        height: 84px;
+        border-radius: 50%;
+        background: #0284c7;
+        display: grid;
+        place-items: center;
+        position: relative;
+      }
+      .ku-items {
+        font-size: 30px;
+        font-weight: 600;
+        color: #cbd5e1;
+        width: 300px;
+        position: relative;
+        height: 40px;
+      }
+      .ku-items span {
+        position: absolute;
+        left: 0;
+        top: 0;
+        white-space: nowrap;
+      }
+      .ku-total {
+        font-size: 24px;
+        letter-spacing: 0.12em;
+        color: #94a3b8;
+        position: relative;
+        width: 200px;
+        height: 104px;
+      }
+      .ku-total b {
+        position: absolute;
+        left: 0;
+        top: 30px;
+        font-size: 60px;
+        letter-spacing: -0.01em;
+        color: #f1f5f9;
+      }
+      .ku-pay {
+        margin-left: auto;
+        width: 380px;
+        height: 116px;
+        border-radius: 999px;
+        background: #1d2a47;
+        color: #94a3b8;
+        display: grid;
+        place-items: center;
+        font-size: 32px;
+        font-weight: 800;
+        position: relative;
+        overflow: hidden;
+      }
+      #ku-pay-on {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #059669, #00ff87);
+        color: #04210f;
+        opacity: 0;
+      }
+      #glass-cursor {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 104px;
+        height: 104px;
+        margin: -52px 0 0 -52px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.16);
+        border: 3px solid rgba(255, 255, 255, 0.75);
+        box-shadow:
+          0 0 40px rgba(0, 243, 255, 0.55),
+          inset 0 0 24px rgba(255, 255, 255, 0.35);
+        opacity: 0;
+        z-index: 10;
+      }
+      #glass-cursor::after {
+        content: "";
+        position: absolute;
+        left: 40px;
+        top: 40px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #fff;
+      }
+      #cursor-ripple {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 220px;
+        height: 220px;
+        margin: -110px 0 0 -110px;
+        border-radius: 50%;
+        border: 5px solid #00f3ff;
+        opacity: 0;
+        z-index: 9;
+      }
+
+      /* scene 02 glass cards */
+      .gcard {
+        position: absolute;
+        width: 1000px;
+        height: 820px;
+        border-radius: 36px;
+        background: var(--glass);
+        border: 2px solid var(--glass-line);
+        box-shadow:
+          0 40px 120px rgba(0, 0, 0, 0.5),
+          inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        padding: 52px 56px;
+        opacity: 0;
+        overflow: hidden;
+      }
+      .gcard .gh {
+        font-family: var(--mono);
+        font-size: 30px;
+        letter-spacing: 0.18em;
+        color: var(--cyan);
+      }
+      .gcard .gt {
+        font-size: 60px;
+        font-weight: 300;
+        margin-top: 18px;
+        letter-spacing: -0.01em;
+      }
+      .gcard .gf {
+        position: absolute;
+        left: 56px;
+        bottom: 46px;
+        font-family: var(--mono);
+        font-size: 26px;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+      }
+      #card-enc {
+        left: 150px;
+        top: 230px;
+      }
+      #card-viz {
+        left: 150px;
+        top: 1110px;
+      }
+      #card-fhir {
+        left: 2690px;
+        top: 230px;
+      }
+      #card-pay {
+        left: 2690px;
+        top: 1110px;
+      }
+      .pipe {
+        position: relative;
+        margin-top: 50px;
+        height: 150px;
+      }
+      .pipe-line {
+        position: absolute;
+        left: 40px;
+        top: 38px;
+        width: 808px;
+        height: 4px;
+        background: rgba(0, 243, 255, 0.25);
+      }
+      #pipe-dot {
+        position: absolute;
+        left: 40px;
+        top: 28px;
+        width: 24px;
+        height: 24px;
+        margin-left: -12px;
+        border-radius: 50%;
+        background: var(--cyan);
+        box-shadow: 0 0 22px var(--cyan);
+      }
+      .pnode {
+        position: absolute;
+        top: 0;
+        width: 180px;
+        margin-left: -90px;
+        text-align: center;
+        font-family: var(--mono);
+        font-size: 22px;
+        letter-spacing: 0.08em;
+        color: var(--ink);
+      }
+      .pnode i {
+        display: block;
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 18px;
+        border-radius: 50%;
+        border: 3px solid rgba(0, 243, 255, 0.6);
+        background: rgba(0, 243, 255, 0.08);
+      }
+      #hex {
+        margin-top: 20px;
+        font-family: var(--mono);
+        font-size: 29px;
+        line-height: 1.6;
+        color: #7ee7f2;
+        white-space: pre;
+        letter-spacing: 0.04em;
+      }
+      #viz-bpm {
+        font-size: 120px;
+        font-weight: 200;
+        margin-top: 10px;
+      }
+      #viz-bpm small {
+        font-size: 40px;
+        color: var(--emerald);
+        font-family: var(--mono);
+        margin-left: 18px;
+      }
+      #viz-canvas {
+        position: absolute;
+        left: 50px;
+        top: 330px;
+        width: 900px;
+        height: 400px;
+      }
+      .frow {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 82px;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.07);
+        font-family: var(--mono);
+        font-size: 28px;
+        color: var(--ink);
+        opacity: 0;
+      }
+      .frow span {
+        color: var(--muted);
+      }
+      .frow b {
+        color: var(--emerald);
+        font-weight: 500;
+      }
+      .flist {
+        margin-top: 40px;
+      }
+      #pay-state {
+        position: relative;
+        margin-top: 34px;
+        height: 90px;
+      }
+      #pay-state span {
+        position: absolute;
+        left: 0;
+        top: 0;
+        font-size: 56px;
+        font-weight: 300;
+      }
+      #pay-state-ok {
+        color: var(--emerald);
+        opacity: 0;
+      }
+      .nfc-big {
+        position: absolute;
+        right: 56px;
+        top: 150px;
+        width: 220px;
+        height: 220px;
+      }
+      #connectors path {
+        fill: none;
+        stroke: rgba(0, 243, 255, 0.55);
+        stroke-width: 4;
+      }
+      #connectors circle {
+        fill: var(--cyan);
+      }
+
+      /* ---------- scene 03 ---------- */
+      .s3panel {
+        position: absolute;
+        width: 660px;
+        border-radius: 32px;
+        background: var(--glass);
+        border: 2px solid var(--glass-line);
+        padding: 40px 44px;
+        opacity: 0;
+      }
+      .s3panel .gh {
+        font-family: var(--mono);
+        font-size: 26px;
+        letter-spacing: 0.18em;
+        color: var(--cyan);
+      }
+      #s3-left {
+        left: 110px;
+        top: 260px;
+        height: 1640px;
+      }
+      #s3-right-a {
+        left: 3070px;
+        top: 260px;
+        height: 760px;
+      }
+      #s3-right-b {
+        left: 3070px;
+        top: 1060px;
+        height: 840px;
+      }
+      .meter {
+        position: relative;
+        margin: 40px auto 0;
+        width: 520px;
+        height: 520px;
+      }
+      .meter svg {
+        position: absolute;
+        inset: 0;
+      }
+      .meter .mv {
+        position: absolute;
+        left: 0;
+        top: 180px;
+        width: 520px;
+        text-align: center;
+        font-size: 120px;
+        font-weight: 200;
+      }
+      .meter .ml {
+        position: absolute;
+        left: 0;
+        top: 330px;
+        width: 520px;
+        text-align: center;
+        font-family: var(--mono);
+        font-size: 24px;
+        letter-spacing: 0.16em;
+        color: var(--muted);
+      }
+      .meter.sm {
+        width: 260px;
+        height: 260px;
+        margin: 0;
+      }
+      .meter.sm .mv {
+        top: 82px;
+        width: 260px;
+        font-size: 64px;
+      }
+      .meter.sm .ml {
+        top: 290px;
+        width: 260px;
+        font-size: 20px;
+        line-height: 1.4;
+      }
+      .meter-row {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 80px;
+      }
+      .ring-bg {
+        fill: none;
+        stroke: rgba(255, 255, 255, 0.08);
+      }
+      .ring-fg {
+        fill: none;
+        stroke-linecap: round;
+        stroke-dasharray: 1 1;
+      }
+      .chart-axis {
+        stroke: rgba(255, 255, 255, 0.1);
+        stroke-width: 2;
+      }
+      .chart-lbl {
+        font-family: var(--mono);
+        font-size: 20px;
+        fill: #7f93a8;
+      }
+      .s3big {
+        font-size: 72px;
+        font-weight: 200;
+        margin-top: 10px;
+      }
+      .s3big small {
+        font-size: 30px;
+        font-family: var(--mono);
+        color: var(--emerald);
+        margin-left: 12px;
+      }
+      .callout {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 560px;
+        padding: 22px 28px;
+        border-radius: 18px;
+        background: rgba(6, 10, 16, 0.78);
+        border: 2px solid rgba(0, 243, 255, 0.4);
+        opacity: 0;
+      }
+      .callout.v {
+        border-color: rgba(138, 43, 226, 0.75);
+      }
+      .callout.e {
+        border-color: rgba(0, 255, 135, 0.5);
+      }
+      .callout h4 {
+        font-family: var(--mono);
+        font-size: 28px;
+        font-weight: 500;
+        letter-spacing: 0.1em;
+        color: var(--ink);
+      }
+      .callout p {
+        font-family: var(--mono);
+        font-size: 24px;
+        color: var(--muted);
+        margin-top: 8px;
+        letter-spacing: 0.04em;
+      }
+      .callout p b {
+        color: var(--cyan);
+        font-weight: 500;
+      }
+      .callout.v p b {
+        color: #c08bff;
+      }
+      .callout.e p b {
+        color: var(--emerald);
+      }
+      .tmatrix {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-top: 16px;
+      }
+      .tmatrix div {
+        height: 62px;
+        border-radius: 10px;
+        background: rgba(0, 255, 135, 0.1);
+        border: 2px solid rgba(0, 255, 135, 0.35);
+        display: grid;
+        place-items: center;
+        font-family: var(--mono);
+        font-size: 24px;
+        color: #b8ffd9;
+      }
+      #leaders line {
+        stroke-width: 3;
+      }
+      #leaders circle {
+        stroke-width: 4;
+        fill: var(--void);
+      }
+
+      /* ---------- scene 04 ---------- */
+      #s4-cap {
+        left: 200px;
+        top: 1500px;
+        width: 1700px;
+        padding: 50px 60px;
+        border-radius: 36px;
+        background: rgba(6, 8, 12, 0.72);
+        border: 2px solid rgba(255, 255, 255, 0.14);
+        opacity: 0;
+      }
+      #s4-cap .gh {
+        font-family: var(--mono);
+        font-size: 30px;
+        letter-spacing: 0.24em;
+        color: var(--cyan);
+      }
+      #s4-cap h2 {
+        font-size: 104px;
+        font-weight: 200;
+        letter-spacing: -0.01em;
+        margin-top: 18px;
+        color: #f6fbff;
+      }
+      #lockup {
+        left: 1880px;
+        top: 560px;
+        width: 1800px;
+        height: 1040px;
+        border-radius: 48px;
+        background: linear-gradient(150deg, #10151d 0%, #07090d 55%, #0b0f15 100%);
+        box-shadow:
+          0 0 0 2px rgba(255, 255, 255, 0.1),
+          0 0 0 6px rgba(0, 243, 255, 0.08),
+          0 60px 160px rgba(0, 0, 0, 0.7),
+          0 0 160px rgba(0, 243, 255, 0.16);
+        overflow: hidden;
+        opacity: 0;
+      }
+      .lk-metal {
+        position: absolute;
+        inset: 0;
+        border-radius: 48px;
+        background:
+          linear-gradient(115deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 30%),
+          repeating-linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.012) 0 2px,
+            rgba(0, 0, 0, 0.02) 2px 5px
+          );
+      }
+      #lk-sheen {
+        position: absolute;
+        top: -20%;
+        left: 0;
+        width: 700px;
+        height: 140%;
+        background: linear-gradient(
+          90deg,
+          rgba(255, 255, 255, 0) 0%,
+          rgba(210, 245, 255, 0.16) 50%,
+          rgba(255, 255, 255, 0) 100%
+        );
+      }
+      .lk-inner {
+        position: absolute;
+        left: 120px;
+        top: 120px;
+        width: 1560px;
+      }
+      .lk-tile {
+        width: 150px;
+        height: 150px;
+        border-radius: 40px;
+        background: linear-gradient(135deg, #0a3d62, #00b8d9);
+        display: grid;
+        place-items: center;
+        box-shadow:
+          0 0 0 10px rgba(0, 243, 255, 0.12),
+          0 0 70px rgba(0, 243, 255, 0.45);
+      }
+      .lk-eyebrow {
+        font-family: var(--mono);
+        font-size: 32px;
+        letter-spacing: 0.32em;
+        color: var(--cyan);
+        margin-top: 56px;
+      }
+      #lk-title {
+        font-size: 148px;
+        font-weight: 300;
+        letter-spacing: -0.025em;
+        margin-top: 20px;
+        color: #ffffff;
+        white-space: nowrap;
+      }
+      #lk-title span {
+        display: inline-block;
+      }
+      #lk-title .sp {
+        width: 0.28em;
+      }
+      #lk-sub {
+        font-size: 64px;
+        font-style: italic;
+        font-weight: 300;
+        color: #b9c9d8;
+        margin-top: 14px;
+      }
+      #lk-url {
+        position: relative;
+        display: inline-block;
+        margin-top: 64px;
+        padding: 26px 40px;
+        border-radius: 20px;
+        background: rgba(0, 243, 255, 0.07);
+        border: 2px solid rgba(0, 243, 255, 0.4);
+        font-family: var(--mono);
+        font-size: 40px;
+        color: #c9fbff;
+        height: 112px;
+        min-width: 1300px;
+      }
+      #lk-url-text {
+        white-space: pre;
+      }
+      #lk-caret {
+        display: inline-block;
+        width: 22px;
+        height: 46px;
+        background: var(--cyan);
+        vertical-align: -8px;
+        margin-left: 6px;
+      }
+      #lk-url-glow {
+        position: absolute;
+        left: 40px;
+        bottom: 16px;
+        width: 1220px;
+        height: 4px;
+        background: linear-gradient(90deg, var(--cyan), var(--emerald));
+        box-shadow: 0 0 24px var(--cyan);
+        transform-origin: 0 50%;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="60"
+      data-width="3840"
+      data-height="2160"
+      data-fps="60"
+    >
+      <canvas id="webgl-canvas" width="3840" height="2160" data-layout-allow-overflow></canvas>
+
+      <svg id="svg-hud-layer" viewBox="0 0 3840 2160" width="3840" height="2160">
+        <defs>
+          <pattern id="bp-grid" width="96" height="96" patternUnits="userSpaceOnUse">
+            <path d="M96 0H0V96" fill="none" stroke="rgba(0,243,255,0.07)" stroke-width="2" />
+          </pattern>
+          <clipPath id="bp-clip">
+            <rect id="bp-clip-rect" x="-4000" y="-4000" width="8000" height="8000" />
+          </clipPath>
+        </defs>
+        <g id="bp-root">
+          <rect id="bp-gridrect" x="0" y="0" width="3840" height="2160" fill="url(#bp-grid)" opacity="0" />
+          <g id="bp-cross" opacity="0" stroke="rgba(0,243,255,0.35)" stroke-width="2">
+            <line x1="1920" y1="140" x2="1920" y2="2020" stroke-dasharray="10 14" />
+            <line x1="140" y1="1080" x2="3700" y2="1080" stroke-dasharray="10 14" />
+          </g>
+          <g id="bp-kiosk">
+            <g id="bp-xf">
+              <g clip-path="url(#bp-clip)">
+              <g
+                id="bp-lines"
+                fill="none"
+                stroke="#00F3FF"
+                stroke-width="6"
+                stroke-linejoin="round"
+                stroke-linecap="round"
+              >
+                <path class="draw" pathLength="1" d="M-560 0H560V-100H-560Z" />
+                <path
+                  class="draw"
+                  pathLength="1"
+                  d="M-470 -100H470Q500 -100 500 -130V-2170Q500 -2200 470 -2200H-470Q-500 -2200 -500 -2170V-130Q-500 -100 -470 -100Z"
+                />
+                <path class="draw" pathLength="1" d="M-500 -2200H500Q520 -2200 520 -2220V-2320Q520 -2340 500 -2340H-500Q-520 -2340 -520 -2320V-2220Q-520 -2200 -500 -2200Z" />
+                <path class="draw" pathLength="1" d="M-440 -110H440V-2190H-440Z" />
+                <path class="draw" pathLength="1" d="M-330 -840H330V-1880H-330Z" />
+                <path class="draw" pathLength="1" d="M-300 -880H300V-1840H-300Z" />
+                <path class="draw" pathLength="1" d="M-430 -2080H430" />
+                <path class="draw" pathLength="1" d="M-250 -280H250V-480H-250Z" />
+                <path class="draw" pathLength="1" d="M-230 -500H230" />
+                <path class="draw" pathLength="1" d="M-120 -805A45 45 0 1 1 -120 -715A45 45 0 1 1 -120 -805Z" />
+                <path class="draw" pathLength="1" d="M60 -805H220V-715H60Z" />
+                <path class="draw" pathLength="1" d="M-425 -2100V-200M425 -2100V-200" />
+                <path class="draw" pathLength="1" d="M-440 -2270H-90M90 -2270H440" />
+                <path class="draw" pathLength="1" d="M-36 -2270H36M0 -2306V-2234" />
+              </g>
+              <g id="bp-hidden" fill="none" stroke="#8A2BE2" stroke-width="5" stroke-dasharray="26 18" opacity="0">
+                <rect x="-420" y="-620" width="840" height="480" />
+                <rect x="-420" y="-1240" width="840" height="580" />
+                <rect x="-420" y="-1580" width="840" height="300" />
+                <rect x="-420" y="-2080" width="840" height="460" />
+                <ellipse cx="-60" cy="-950" rx="230" ry="70" />
+              </g>
+              <g id="bp-dims" fill="none" stroke="rgba(0,243,255,0.75)" stroke-width="4" opacity="0">
+                <path d="M720 0V-2340M690 0H750M690 -2340H750" />
+                <path d="M-560 220H560M-560 190V250M560 190V250" />
+                <path d="M-330 -1940H330M-330 -1910V-1970M330 -1910V-1970" />
+                <path d="M-120 -760L-760 -560H-1060" />
+                <path d="M250 -380L760 -260H1060" />
+                <path d="M-440 -1450L-760 -1450H-1060" />
+                <path d="M300 -1360L760 -1560H1060" />
+              </g>
+              <g id="bp-text" font-family="JetBrains Mono, monospace" font-size="74" fill="#BFF9FF" letter-spacing="6" opacity="0">
+                <text x="780" y="-1150" transform="rotate(90 780 -1150)" text-anchor="middle">H 2340 mm</text>
+                <text x="0" y="330" text-anchor="middle">W 1120 mm</text>
+                <text x="0" y="-1990" text-anchor="middle" font-size="60">21.5in PCAP · 4K</text>
+                <text x="-1080" y="-585" text-anchor="end">BIOMETRIC ARRAY</text>
+                <text x="1080" y="-285">DISPENSE PORT</text>
+                <text x="-1080" y="-1475" text-anchor="end">6-DOF CAROUSEL</text>
+                <text x="1080" y="-1585">UV-C CHAMBER</text>
+              </g>
+              </g>
+            </g>
+          </g>
+        </g>
+      </svg>
+
+      <div id="dom-ui-wrapper">
+        <!-- ================= SCENE 01 ================= -->
+        <section id="s1" class="clip" data-start="0" data-duration="15.4" data-track-index="1">
+          <div id="bootlog" class="abs"></div>
+          <div id="tl-temp" class="tlabel">CORE_TEMP: <b id="tl-temp-v">21.0°C</b></div>
+          <div id="tl-ready" class="tlabel em"><b id="tl-ready-v">SYSTEM_BOOT</b></div>
+          <div id="tl-enc" class="tlabel">ENCRYPTION: <b id="tl-enc-v">AES-256</b></div>
+          <div id="tl-link" class="tlabel">UPLINK: <b id="tl-link-v">FHIR R4 · 12 ms</b></div>
+          <div id="title-block" class="abs">
+            <div id="title-eyebrow">MEDVEND // AUTONOMOUS HEALTH KIOSK</div>
+            <div id="title-scramble"></div>
+            <div id="title-rule"></div>
+            <div id="title-sub">Biometric vitals, AI triage and robotic dispensing, fused into one autonomous unit.</div>
+          </div>
+        </section>
+
+        <!-- ================= SCENE 02 ================= -->
+        <section id="s2" class="clip" data-start="15" data-duration="16" data-track-index="2">
+          <svg id="connectors" class="abs" viewBox="0 0 3840 2160" width="3840" height="2160" style="left: 0; top: 0">
+            <path id="cn-enc" d="M1295 520H1222V600H1150" pathLength="1" />
+            <path id="cn-viz" d="M1295 1500H1222V1440H1150" pathLength="1" />
+            <path id="cn-fhir" d="M2545 520H2618V600H2690" pathLength="1" />
+            <path id="cn-pay" d="M2545 1500H2618V1440H2690" pathLength="1" />
+          </svg>
+
+          <div id="card-enc" class="gcard">
+            <div class="gh">ENCRYPTION PIPELINE</div>
+            <div class="gt">AES-256-GCM · TLS 1.3</div>
+            <div class="pipe">
+              <div class="pipe-line"></div>
+              <div id="pipe-dot"></div>
+              <div class="pnode" style="left: 40px"><i></i>BIOMETRIC</div>
+              <div class="pnode" style="left: 309px"><i></i>TOKENIZE</div>
+              <div class="pnode" style="left: 578px"><i></i>ENCRYPT</div>
+              <div class="pnode" style="left: 848px"><i></i>VAULT</div>
+            </div>
+            <div id="hex"></div>
+            <div class="gf">KEY ROTATION 15 MIN · ZERO-KNOWLEDGE</div>
+          </div>
+
+          <div id="card-viz" class="gcard">
+            <div class="gh">HEARTBEAT SIGNAL // BIO-ACOUSTIC</div>
+            <div id="viz-bpm"><span id="viz-bpm-v">--</span><small>BPM</small></div>
+            <canvas id="viz-canvas" width="900" height="400"></canvas>
+            <div class="gf">PPG SENSOR · 500 Hz · SIGNAL Q 0.98</div>
+          </div>
+
+          <div id="card-fhir" class="gcard">
+            <div class="gh">HL7 · FHIR R4 SYNC</div>
+            <div class="gt">EHR Interop Gateway</div>
+            <div class="flist">
+              <div class="frow" id="fr1"><span>Patient/anon-7f3a</span><b>TOKENIZED ✓</b></div>
+              <div class="frow" id="fr2"><span>Observation/heart-rate</span><b>72 /min ✓</b></div>
+              <div class="frow" id="fr3"><span>Observation/spo2</span><b>98 % ✓</b></div>
+              <div class="frow" id="fr4"><span>Condition/triage</span><b>LOW-ACUITY ✓</b></div>
+              <div class="frow" id="fr5"><span>MedicationDispense</span><b>APAP 500mg ✓</b></div>
+            </div>
+            <div class="gf">SYNC LATENCY 142 ms · HL7v2 ⇄ FHIR R4</div>
+          </div>
+
+          <div id="card-pay" class="gcard">
+            <div class="gh">PAYMENT AUTHORIZATION // NFC · WEB3</div>
+            <div id="pay-state">
+              <span id="pay-state-wait">Awaiting tap…</span>
+              <span id="pay-state-ok">Authorized ✓</span>
+            </div>
+            <svg class="nfc-big" viewBox="0 0 220 220">
+              <g fill="none" stroke="#00F3FF" stroke-width="10" stroke-linecap="round">
+                <path class="nfcw" d="M70 70a60 60 0 0 1 0 80" />
+                <path class="nfcw" d="M105 45a95 95 0 0 1 0 130" />
+                <path class="nfcw" d="M140 20a130 130 0 0 1 0 180" />
+              </g>
+              <circle cx="40" cy="110" r="16" fill="#00F3FF" />
+            </svg>
+            <div class="flist">
+              <div class="frow" id="pr1"><span>Method</span><b>NFC · WALLET</b></div>
+              <div class="frow" id="pr2"><span>Wallet</span><b>0x7a3f…c91e</b></div>
+              <div class="frow" id="pr3"><span>Amount</span><b>$6.49 · 6.49 USDC</b></div>
+              <div class="frow" id="pr4"><span>Tx</span><b>0x9b41…e07d</b></div>
+            </div>
+            <div class="gf">PCI-DSS · TOKENIZED · NO CARD DATA STORED</div>
+          </div>
+
+          <div id="kiosk-ui">
+            <div class="ku-header">
+              <div class="ku-logo">
+                <svg width="44" height="44" viewBox="0 0 44 44"><path d="M22 6V38M6 22H38" stroke="#fff" stroke-width="6" stroke-linecap="round" /></svg>
+              </div>
+              <div class="ku-brand"><b>MedVend Health Kiosk</b><span>24/7 Medical Supplies</span></div>
+              <div class="ku-clock">07:41 PM</div>
+              <div class="ku-pill">● Secure Session</div>
+            </div>
+            <div class="ku-steps">
+              <div class="ku-step" style="left: 0"><i>1</i>Vitals</div>
+              <div class="ku-step" style="left: 430px"><i>2</i>AI Triage</div>
+              <div class="ku-step" style="left: 900px"><i>3</i>Dispense</div>
+              <div class="ku-steps-track"><div id="ku-steps-fill"></div></div>
+            </div>
+
+            <div class="ku-body" data-layout-allow-overlap>
+              <section class="ku-state" id="st-vitals">
+                <h2>Vital Signs Assessment</h2>
+                <p>Place your fingertip on the biometric sensor</p>
+                <div id="bio-sensor">
+                  <div class="pulse" id="pulse-a"></div>
+                  <div class="pulse" id="pulse-b"></div>
+                  <div class="pulse" id="pulse-c"></div>
+                  <div class="bio-core">
+                    <div id="bio-core-glow"></div>
+                    <svg width="130" height="150" viewBox="0 0 130 150">
+                      <g fill="none" stroke="#67E8F9" stroke-width="6" stroke-linecap="round">
+                        <path d="M20 60a45 45 0 0 1 90 0v30" />
+                        <path d="M35 64a30 30 0 0 1 60 0v38a22 22 0 0 1-8 17" />
+                        <path d="M50 66a15 15 0 0 1 30 0v44a34 34 0 0 1-16 28" />
+                        <path d="M65 66v48a48 48 0 0 1-18 30" />
+                        <path d="M20 104a62 62 0 0 0 10 26" />
+                        <path d="M35 112a40 40 0 0 0 6 22" />
+                      </g>
+                    </svg>
+                  </div>
+                </div>
+                <div id="bio-status">PLACE FINGER ON SENSOR</div>
+                <div class="vgrid">
+                  <div class="vcard"><label>HEART RATE</label><div class="vv"><span id="v-hr">--</span><small>BPM</small></div></div>
+                  <div class="vcard"><label>SpO₂</label><div class="vv"><span id="v-spo2">--</span><small>%</small></div></div>
+                  <div class="vcard"><label>TEMPERATURE</label><div class="vv"><span id="v-temp">--.-</span><small>°C</small></div></div>
+                  <div class="vcard"><label>BLOOD PRESSURE</label><div class="vv"><span id="v-bp">---/--</span><small>mmHg</small></div></div>
+                </div>
+                <div class="ku-card" id="ecg-card"><canvas id="ecg-canvas" width="1134" height="226"></canvas></div>
+                <div class="ku-btn" id="vitals-done">CONTINUE TO AI TRIAGE →</div>
+              </section>
+
+              <section class="ku-state" id="st-triage">
+                <h2>AI Triage Diagnostics</h2>
+                <p>Tell us how you feel. Select all that apply.</p>
+                <div class="chips">
+                  <div class="chip">Headache<div class="on" id="chip-1">Headache ✓</div></div>
+                  <div class="chip">Mild fever<div class="on" id="chip-2">Mild fever ✓</div></div>
+                  <div class="chip">Fatigue</div>
+                  <div class="chip">Sore throat</div>
+                  <div class="chip">Nausea</div>
+                  <div class="chip">Dizziness</div>
+                  <div class="chip">Cough</div>
+                  <div class="chip">Muscle aches</div>
+                </div>
+                <div class="ku-card" id="tri-engine">
+                  <h3>Neural triage engine</h3>
+                  <div class="tri-bar"><div id="tri-bar-fill"></div></div>
+                  <div id="tri-scan">Cross-checking 0 clinical protocols…</div>
+                  <div id="tri-ctx">HR 72 · SpO₂ 98% · 36.6°C · BP 118/76</div>
+                </div>
+                <div class="ku-card" id="tri-result">
+                  <span class="badge">LOW ACUITY · OTC ELIGIBLE</span>
+                  <div class="tri-dx">Likely tension-type headache with low-grade fever</div>
+                  <div class="tri-flags"><b>✓</b> No red-flag symptoms detected<br /><b>✓</b> Vitals within normal range</div>
+                  <svg id="conf-ring" viewBox="0 0 260 260">
+                    <circle cx="130" cy="130" r="112" fill="none" stroke="#1d2a47" stroke-width="18" />
+                    <circle id="conf-arc" cx="130" cy="130" r="112" fill="none" stroke="#00ff87" stroke-width="18" stroke-linecap="round" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" transform="rotate(-90 130 130)" />
+                  </svg>
+                  <div id="conf-val">0.0%</div>
+                  <div class="conf-lbl">CONFIDENCE</div>
+                  <div class="tri-rx">Rx: Acetaminophen 500mg</div>
+                </div>
+                <div class="ku-btn" id="tri-go">DISPENSE RECOMMENDED ITEM →</div>
+              </section>
+
+              <section class="ku-state" id="st-dispense">
+                <h2>Instant Automated Dispensing</h2>
+                <div class="ku-card" id="dsp-product">
+                  <div class="dsp-art">
+                    <svg width="170" height="240" viewBox="0 0 170 240">
+                      <defs>
+                        <linearGradient id="btl" x1="0" x2="1">
+                          <stop offset="0" stop-color="#dbeafe" />
+                          <stop offset="0.5" stop-color="#ffffff" />
+                          <stop offset="1" stop-color="#bfdbfe" />
+                        </linearGradient>
+                      </defs>
+                      <rect x="40" y="10" width="90" height="40" rx="10" fill="#1d4ed8" />
+                      <rect x="20" y="50" width="130" height="180" rx="26" fill="url(#btl)" />
+                      <rect x="20" y="105" width="130" height="80" fill="#3b82f6" opacity="0.85" />
+                      <circle cx="85" cy="145" r="24" fill="#fff" />
+                      <path d="M73 157L97 133" stroke="#3b82f6" stroke-width="8" stroke-linecap="round" />
+                    </svg>
+                  </div>
+                  <div class="dsp-info">
+                    <b>Acetaminophen 500mg</b>
+                    <div class="q">24 Caplets, 500mg</div>
+                    <span class="tag">Acetaminophen</span>
+                    <div class="dsp-price">$6.49</div>
+                  </div>
+                  <div class="instock">● In Stock</div>
+                </div>
+                <div class="ku-card" id="dsp-pay">
+                  <svg class="nfc-ico" viewBox="0 0 220 220">
+                    <g fill="none" stroke="#38bdf8" stroke-width="12" stroke-linecap="round">
+                      <path class="nfcs" d="M70 70a60 60 0 0 1 0 80" />
+                      <path class="nfcs" d="M105 45a95 95 0 0 1 0 130" />
+                      <path class="nfcs" d="M140 20a130 130 0 0 1 0 180" />
+                    </g>
+                    <circle cx="40" cy="110" r="18" fill="#38bdf8" />
+                  </svg>
+                  <div id="pay-wait"><b>Tap card, phone or wallet</b><span>Contactless NFC · Web3 wallets accepted</span></div>
+                  <div id="pay-ok"><b>Payment authorized ✓</b><span>$6.49 charged · receipt sent to phone</span></div>
+                </div>
+                <div class="ku-card" id="dsp-steps">
+                  <div class="dstep" id="ds1"><i></i>Locating bin B-14<em>0.2s</em></div>
+                  <div class="dstep" id="ds2"><i></i>6-DOF picker retrieving<em>0.8s</em></div>
+                  <div class="dstep" id="ds3"><i></i>UV-C sterilization pass<em>254nm</em></div>
+                  <div class="dstep" id="ds4"><i></i>Releasing to collection tray<em>READY</em></div>
+                  <div class="dsp-bar"><div id="dsp-bar-fill"></div></div>
+                </div>
+                <div id="dsp-collect">Please collect your item from the tray below ↓</div>
+              </section>
+            </div>
+
+            <div class="ku-footer">
+              <div class="ku-cart">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2l2.4 11h11l2-8H6.5" /><circle cx="9" cy="20" r="1.4" /><circle cx="17" cy="20" r="1.4" /></svg>
+              </div>
+              <div class="ku-items"><span id="items-0">0 items selected</span><span id="items-1" style="opacity: 0">1 item selected</span></div>
+              <div class="ku-total">TOTAL<b id="total-0">$0.00</b><b id="total-1" style="opacity: 0">$6.49</b></div>
+              <div class="ku-pay">REVIEW &amp; PAY<div id="ku-pay-on">PAID ✓</div></div>
+            </div>
+
+            <div id="st-attract" data-layout-allow-overlap>
+              <div class="ku-blob" style="left: -330px; top: -50px; width: 1040px; height: 1040px; background: radial-gradient(circle, rgba(14, 165, 233, 0.42), rgba(14, 165, 233, 0) 70%)"></div>
+              <div class="ku-blob" style="left: 600px; top: 1140px; width: 960px; height: 960px; background: radial-gradient(circle, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0) 70%)"></div>
+              <div class="att-tile">
+                <svg width="96" height="96" viewBox="0 0 44 44"><path d="M22 8V36M8 22H36" stroke="#fff" stroke-width="4.5" stroke-linecap="round" /></svg>
+              </div>
+              <div class="att-title">MedVend <span>Health Kiosk</span></div>
+              <div class="att-sub">Vitals check, AI triage and over-the-counter care — available around the clock.</div>
+              <div class="att-cta">TOUCH TO BEGIN HEALTH CHECK</div>
+            </div>
+
+            <div id="cursor-ripple"></div>
+            <div id="glass-cursor"></div>
+          </div>
+        </section>
+
+        <!-- ================= SCENE 03 ================= -->
+        <section id="s3" class="clip" data-start="30" data-duration="15.6" data-track-index="3">
+          <svg id="leaders" class="abs" viewBox="0 0 3840 2160" width="3840" height="2160" style="left: 0; top: 0">
+            <g id="ld-picker" opacity="0"><line stroke="#00F3FF" /><circle r="12" stroke="#00F3FF" /></g>
+            <g id="ld-compute" opacity="0"><line stroke="#00F3FF" /><circle r="12" stroke="#00F3FF" /></g>
+            <g id="ld-uvc" opacity="0"><line stroke="#B57BFF" /><circle r="12" stroke="#B57BFF" /></g>
+            <g id="ld-thermal" opacity="0"><line stroke="#00FF87" /><circle r="12" stroke="#00FF87" /></g>
+          </svg>
+
+          <div id="s3-left" class="s3panel">
+            <div class="gh">OPERATIONAL TELEMETRY</div>
+            <div class="meter">
+              <svg viewBox="0 0 520 520">
+                <circle class="ring-bg" cx="260" cy="260" r="230" stroke-width="22" />
+                <circle id="m-uptime" class="ring-fg" cx="260" cy="260" r="230" stroke-width="22" stroke="#00F3FF" pathLength="1" stroke-dashoffset="1" transform="rotate(-90 260 260)" />
+                <circle class="ring-bg" cx="260" cy="260" r="190" stroke-width="6" stroke-dasharray="4 14" />
+              </svg>
+              <div class="mv" id="mv-uptime">0.00%</div>
+              <div class="ml">OPERATIONAL UPTIME</div>
+            </div>
+            <div class="meter-row">
+              <div class="meter sm">
+                <svg viewBox="0 0 260 260">
+                  <circle class="ring-bg" cx="130" cy="130" r="112" stroke-width="16" />
+                  <circle id="m-thru" class="ring-fg" cx="130" cy="130" r="112" stroke-width="16" stroke="#00FF87" pathLength="1" stroke-dashoffset="1" transform="rotate(-90 130 130)" />
+                </svg>
+                <div class="mv" id="mv-thru">0s</div>
+                <div class="ml">PATIENT THROUGHPUT</div>
+              </div>
+              <div class="meter sm">
+                <svg viewBox="0 0 260 260">
+                  <circle class="ring-bg" cx="130" cy="130" r="112" stroke-width="16" />
+                  <circle id="m-vault" class="ring-fg" cx="130" cy="130" r="112" stroke-width="16" stroke="#8A2BE2" pathLength="1" stroke-dashoffset="1" transform="rotate(-90 130 130)" />
+                </svg>
+                <div class="mv" id="mv-vault">0.0°</div>
+                <div class="ml">VAULT TEMP (°C)</div>
+              </div>
+            </div>
+            <div class="s3big" style="margin-top: 150px">0.8<small>s PICK CYCLE</small></div>
+            <div class="s3big">254<small>nm UV-C DOSE</small></div>
+          </div>
+
+          <div id="s3-right-a" class="s3panel">
+            <div class="gh">THROUGHPUT // PTS PER HOUR</div>
+            <div class="s3big"><span id="thru-v">0</span><small>PTS / HR PEAK</small></div>
+            <svg id="spline" viewBox="0 0 572 460" width="572" height="460" style="margin-top: 20px">
+              <defs>
+                <linearGradient id="spl-fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#00F3FF" stop-opacity="0.35" />
+                  <stop offset="1" stop-color="#00F3FF" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+              <line class="chart-axis" x1="40" y1="40" x2="572" y2="40" />
+              <line class="chart-axis" x1="40" y1="150" x2="572" y2="150" />
+              <line class="chart-axis" x1="40" y1="260" x2="572" y2="260" />
+              <line class="chart-axis" x1="40" y1="370" x2="572" y2="370" />
+              <text class="chart-lbl" x="0" y="46">80</text>
+              <text class="chart-lbl" x="0" y="156">60</text>
+              <text class="chart-lbl" x="0" y="266">40</text>
+              <text class="chart-lbl" x="0" y="376">20</text>
+              <text class="chart-lbl" x="40" y="420">00:00</text>
+              <text class="chart-lbl" x="260" y="420">12:00</text>
+              <text class="chart-lbl" x="500" y="420">24:00</text>
+              <path id="spl-area" fill="url(#spl-fill)" opacity="0" d="" />
+              <path id="spl-line" fill="none" stroke="#00F3FF" stroke-width="6" stroke-linecap="round" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" d="" />
+              <path id="spl-line2" fill="none" stroke="#8A2BE2" stroke-width="4" stroke-dasharray="1 1" pathLength="1" stroke-dashoffset="1" d="" />
+            </svg>
+          </div>
+
+          <div id="s3-right-b" class="s3panel">
+            <div class="gh">SYSTEM HEALTH RADAR</div>
+            <svg id="radar" viewBox="-50 0 672 680" width="572" height="579" style="margin-top: 20px">
+              <g id="radar-grid" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2"></g>
+              <polygon id="radar-poly" fill="rgba(0,255,135,0.18)" stroke="#00FF87" stroke-width="5" points="" />
+              <g id="radar-dots" fill="#00FF87"></g>
+              <g id="radar-lbls"></g>
+            </svg>
+          </div>
+
+          <div id="co-picker" class="callout">
+            <h4>6-DOF ROBOTIC PICKER</h4>
+            <p>Pick-and-place <b>0.8 s</b> cycle · ±0.1 mm</p>
+          </div>
+          <div id="co-compute" class="callout">
+            <h4>EDGE AI COMPUTE</h4>
+            <p>On-device triage · <b>HIPAA</b> enclave</p>
+          </div>
+          <div id="co-uvc" class="callout v">
+            <h4>UV-C STERILIZATION</h4>
+            <p>Chamber dose <b>254 nm</b> · 99.9% kill</p>
+          </div>
+          <div id="co-thermal" class="callout e">
+            <h4>THERMAL VAULT · 2–8 °C</h4>
+            <div class="tmatrix" id="tmatrix">
+              <div>4.0°</div><div>4.1°</div><div>3.9°</div><div>4.2°</div>
+              <div>4.0°</div><div>3.8°</div><div>4.1°</div><div>4.0°</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= SCENE 04 ================= -->
+        <section id="s4" class="clip" data-start="45" data-duration="15" data-track-index="4">
+          <div id="s4-cap" class="abs">
+            <div class="gh">DEPLOYED AT SCALE // SMART-HOSPITAL ATRIUM</div>
+            <h2>Any lobby. Any ward. Any hour.</h2>
+          </div>
+          <div id="lockup" class="abs">
+            <div class="lk-metal"></div>
+            <div id="lk-sheen" data-layout-allow-overflow></div>
+            <div class="lk-inner">
+              <div class="lk-tile">
+                <svg width="80" height="80" viewBox="0 0 44 44"><path d="M22 7V37M7 22H37" stroke="#fff" stroke-width="5" stroke-linecap="round" /></svg>
+              </div>
+              <div class="lk-eyebrow">AUTONOMOUS HEALTH KIOSK</div>
+              <div id="lk-title"></div>
+              <div id="lk-sub">“Instant Care. Any Space. Every Time.”</div>
+              <div id="lk-url"><span id="lk-url-text"></span><span id="lk-caret"></span><div id="lk-url-glow"></div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= persistent HUD ================= -->
+        <div id="hud">
+          <div class="corner tl"></div>
+          <div class="corner tr"></div>
+          <div class="corner bl"></div>
+          <div class="corner br"></div>
+          <div id="hud-brand" class="abs"><b>◆ MEDVEND</b> // HEALTH KIOSK SYSTEMS</div>
+          <div id="hud-rec" class="abs"><i></i>REC · 3840×2160 · 60 FPS</div>
+          <div id="hud-scene" class="abs">
+            <span id="sc1"><b>SCENE 01</b> // SYSTEM BOOT &amp; VECTOR MORPH</span>
+            <span id="sc2"><b>SCENE 02</b> // DIGITAL TWIN UI WALKTHROUGH</span>
+            <span id="sc3"><b>SCENE 03</b> // EXPLODED CAD MECHANICS</span>
+            <span id="sc4"><b>SCENE 04</b> // GRAND SCALE &amp; BRAND LOCKUP</span>
+          </div>
+          <div id="hud-time" class="abs"><em id="hud-tc">00:00.00</em> · F <span id="hud-f">0000</span> / 3600</div>
+        </div>
+        <div id="laser" data-layout-allow-overflow></div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { buildComposition } from "./main.js";
+      // Heavy WebGL setup: hold render-ready until the scene is drawable.
+      window.__hf = window.__hf || {};
+      window.__hf.buildReady = window.__hf.buildReady || {};
+      const built = buildComposition();
+      window.__hf.buildReady["medvend-scene"] = built;
+      const { tl } = await built;
+      window.__timelines["main"] = tl;
+      if (typeof window.__hfForceTimelineRebind === "function") window.__hfForceTimelineRebind();
+    </script>
+  </body>
+</html>
